@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>Mini Brawl</title>
+<style>
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #222;
+    color: white;
+    font-family: Arial;
+}
+#ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+canvas {
+    background: #333;
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+    ❤️ 血量: <span id="hp">100</span>
+    &nbsp;&nbsp;
+    ⭐ 分數: <span id="score">0</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let player = {
+    x: canvas.width/2,
+    y: canvas.height/2,
+    radius: 20,
+    color: "cyan",
+    speed: 4,
+    hp: 100
+};
+
+let bullets = [];
+let enemies = [];
+let keys = {};
+let score = 0;
+
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+document.addEventListener("click", e => {
+    const angle = Math.atan2(e.clientY - player.y, e.clientX - player.x);
+    bullets.push({
+        x: player.x,
+        y: player.y,
+        dx: Math.cos(angle) * 8,
+        dy: Math.sin(angle) * 8,
+        radius: 5
+    });
+});
+
+function spawnEnemy() {
+    const side = Math.floor(Math.random() * 4);
+    let x, y;
+    if (side === 0) { x = 0; y = Math.random() * canvas.height; }
+    if (side === 1) { x = canvas.width; y = Math.random() * canvas.height; }
+    if (side === 2) { x = Math.random() * canvas.width; y = 0; }
+    if (side === 3) { x = Math.random() * canvas.width; y = canvas.height; }
+
+    enemies.push({
+        x, y,
+        radius: 18,
+        speed: 1.5
+    });
+}
+
+setInterval(spawnEnemy, 1500);
+
+function update() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Player movement
+    if (keys["w"]) player.y -= player.speed;
+    if (keys["s"]) player.y += player.speed;
+    if (keys["a"]) player.x -= player.speed;
+    if (keys["d"]) player.x += player.speed;
+
+    // Draw player
+    ctx.fillStyle = player.color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
+    ctx.fill();
+
+    // Bullets
+    bullets.forEach((b,i) => {
+        b.x += b.dx;
+        b.y += b.dy;
+
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    // Enemies
+    enemies.forEach((enemy,eIndex) => {
+        const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+        enemy.x += Math.cos(angle) * enemy.speed;
+        enemy.y += Math.sin(angle) * enemy.speed;
+
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI*2);
+        ctx.fill();
+
+        // Collision with player
+        const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+        if (dist < player.radius + enemy.radius) {
+            player.hp -= 1;
+            document.getElementById("hp").innerText = player.hp;
+            if (player.hp <= 0) {
+                alert("💀 你被擊敗了！");
+                location.reload();
+            }
+        }
+
+        // Bullet collision
+        bullets.forEach((b,bIndex) => {
+            const d = Math.hypot(b.x - enemy.x, b.y - enemy.y);
+            if (d < enemy.radius) {
+                enemies.splice(eIndex,1);
+                bullets.splice(bIndex,1);
+                score++;
+                document.getElementById("score").innerText = score;
+            }
+        });
+    });
+
+    requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>
